@@ -1,0 +1,93 @@
+
+___________________________________________________________
+
+Use MySQL Enterprise Audut plugin to track data changes on
+spefific tables.
+
+Tracked data (audit logs) can then be inserted into
+reporting db using parser scripts.
+
+Limitaitons:
+- Changing tracking rules stopps all tracking for existing 
+  connections until the reconnect. This is a limitation in
+  MySQL EE Audit filter handling.
+- No filtering for different users, easy to implement
+  if needed in change_tracking.sql SP (START/STOP).
+- Only tracking INSERT/UPDATE/DELETE statements.
+  Easy to modify if needed.
+
+__________________________________________________________
+
+1 Enable tracking on target server
+==================================
+
+1.1 Enable audit plugin
+-----------------------
+Add below to my.cnf for JSON format:
+loose_audit_log_format	= JSON
+
+mysql -uroot -proot < ./mysqlsrc/share/audit_log_filter_linux_install.sql
+mysql -uroot -proot -se"show plugins" | grep audit
+
+Set audit log to rotate on size (for test set it low so you get some files to read):
+mysql> set persist audit_log_rotate_on_size=4096;
+
+1.2 Install tracking script
+---------------------------
+mysql -uroot -proot < change_tracking.sql
+
+
+2 Setup reporting server
+========================
+
+2.1 Add reporting schema and tables
+-----------------------------------
+mysql -umsandbox -pmsandbox -h127.0.0.1 -P8017 < report_schemas.sql
+
+2.2 Import data into reporting database
+---------------------------------------
+Update script with database connection variables and path to audit files
+Run import: ./audit-parser-json.pl
+
+Imported files are recorded in table audit_information.audit_jobs
+
+Sample output:
+mysql> select * from audit_information.audit_jobs;
++----+---------------------------+---------------------+-------------+
+| ID | AUDIT_LOG_NAME            | PARSED_DATE_TIME    | LOG_ENTRIES |
++----+---------------------------+---------------------+-------------+
+|  1 | audit.20200429T095031.log | 2020-04-29 11:51:21 |          27 |
+|  2 | audit.20200429T102434.log | 2020-04-29 12:24:40 |          12 |
++----+---------------------------+---------------------+-------------+
+
+Data is stored in table audit_information.audit_data.
+Scripts are not inserting all data from audit logs, just some sample columns.
+
+3 USAGE
+=======
+
+Start tracking: CALL tracking.START_TRACKING("db","table");
+List tracked tables: CALL tracking.LIST_TRACKING();
+Stop tracking: CALL tracking.STOP_TRACKING("db","table");
+
+Tracking uses database tracking and one interal tables CHANGE_TRACKING.
+
+4 Test
+======
+CREATE DATABASE test;
+use test;
+CREATE TABLE slafs (i INT);
+CALL tracking.START_TRACKING("test","slafs");
+--  (you need to log out and in again to have filter activated)
+--  (filters are stored in select * from mysql.audit_log_filter;)
+CALL tracking.LIST_TRACKING();
+INSERT INTO test.slafs VALUES (6);
+--  (run tail -f on audit-log)
+CALL tracking.STOP_TRACKING("test","slafs");
+
+5 Misc
+======
+Audit filters:
+SELECT * FROM mysql.audit_log_filter;
+SELECT * FROM mysql.audit_log_user;
+
