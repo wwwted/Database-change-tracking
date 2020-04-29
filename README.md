@@ -18,7 +18,6 @@ Limitations:
 ## 1 Enable tracking on target server
 
 #### 1.1 Enable audit plugin
------------------------
 Add below to my.cnf for JSON format:
 ```loose_audit_log_format	= JSON```
 
@@ -34,7 +33,7 @@ mysql> set persist audit_log_rotate_on_size=4096;
 ```
 
 #### 1.2 Install tracking script
----------------------------
+
 mysql -uroot -proot < change_tracking.sql
 
 
@@ -42,11 +41,11 @@ mysql -uroot -proot < change_tracking.sql
 Reporting server will host all audit logs from all sources and be the "reporting" database.
 
 #### 2.1 Add reporting schema and tables
------------------------------------
+
 mysql -umsandbox -pmsandbox -h127.0.0.1 -P8017 < report_schemas.sql
 
 #### 2.2 Import data into reporting database
----------------------------------------
+
 Update script with database connection variables and path to audit files
 Run import: ./audit-parser-json.pl
 
