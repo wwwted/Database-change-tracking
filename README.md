@@ -1,7 +1,7 @@
 # Database change tracking using MySQL EE Audit
 
 Use MySQL Enterprise Audut plugin to track data changes on
-spefific tables.
+specific tables.
 
 Tracked data (audit logs) can then be inserted into
 reporting db using parser scripts.
